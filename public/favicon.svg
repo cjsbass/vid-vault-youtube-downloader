@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" fill="#000000"/>
+  
+  <!-- Matrix falling code effect -->
+  <defs>
+    <style>
+      .matrix-char {
+        font-family: monospace;
+        font-size: 4px;
+        fill: #00ff41;
+        opacity: 0.9;
+      }
+      .matrix-char-dim {
+        font-family: monospace;
+        font-size: 4px;
+        fill: #00ff41;
+        opacity: 0.3;
+      }
+    </style>
+  </defs>
+  
+  <!-- Column 1 -->
+  <text x="2" y="6" class="matrix-char">ﾊ</text>
+  <text x="2" y="11" class="matrix-char">ﾐ</text>
+  <text x="2" y="16" class="matrix-char-dim">ﾋ</text>
+  <text x="2" y="21" class="matrix-char-dim">ﾇ</text>
+  <text x="2" y="26" class="matrix-char-dim">ｳ</text>
+  
+  <!-- Column 2 -->
+  <text x="7" y="4" class="matrix-char-dim">ｼ</text>
+  <text x="7" y="9" class="matrix-char">ﾅ</text>
+  <text x="7" y="14" class="matrix-char">ﾓ</text>
+  <text x="7" y="19" class="matrix-char-dim">ﾈ</text>
+  <text x="7" y="24" class="matrix-char-dim">ｸ</text>
+  <text x="7" y="29" class="matrix-char-dim">ﾘ</text>
+  
+  <!-- Column 3 -->
+  <text x="12" y="7" class="matrix-char">ﾔ</text>
+  <text x="12" y="12" class="matrix-char">ｹ</text>
+  <text x="12" y="17" class="matrix-char">ｺ</text>
+  <text x="12" y="22" class="matrix-char-dim">ｻ</text>
+  <text x="12" y="27" class="matrix-char-dim">ｷ</text>
+  
+  <!-- Column 4 -->
+  <text x="17" y="5" class="matrix-char-dim">ﾀ</text>
+  <text x="17" y="10" class="matrix-char-dim">ﾄ</text>
+  <text x="17" y="15" class="matrix-char">ﾂ</text>
+  <text x="17" y="20" class="matrix-char">ﾃ</text>
+  <text x="17" y="25" class="matrix-char-dim">ﾁ</text>
+  <text x="17" y="30" class="matrix-char-dim">ｱ</text>
+  
+  <!-- Column 5 -->
+  <text x="22" y="3" class="matrix-char-dim">ｲ</text>
+  <text x="22" y="8" class="matrix-char">ｳ</text>
+  <text x="22" y="13" class="matrix-char">ｴ</text>
+  <text x="22" y="18" class="matrix-char">ｵ</text>
+  <text x="22" y="23" class="matrix-char-dim">ｶ</text>
+  <text x="22" y="28" class="matrix-char-dim">ｶﾞ</text>
+  
+  <!-- Column 6 -->
+  <text x="27" y="6" class="matrix-char">ｷ</text>
+  <text x="27" y="11" class="matrix-char">ｸ</text>
+  <text x="27" y="16" class="matrix-char-dim">ｹ</text>
+  <text x="27" y="21" class="matrix-char-dim">ｺ</text>
+  <text x="27" y="26" class="matrix-char-dim">ｻ</text>
+</svg>
