@@ -9,4 +9,8 @@ restartPolicyType = "always"
 
 [environments]
 [environments.production]
-variables = { NODE_ENV = "production" }
+variables = { 
+  NODE_ENV = "production",
+  PORT = "3000",
+  HOSTNAME = "0.0.0.0"
+}
