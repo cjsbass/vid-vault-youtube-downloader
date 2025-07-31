@@ -29,3 +29,9 @@ next-env.d.ts
 # old project files
 youtube-downloader/
 *.zip
+
+# Downloaded video files
+*.mp4
+*.mkv
+*.avi
+*.mov
