@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Modern font styling */
+.font-inter {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
