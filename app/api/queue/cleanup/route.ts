@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Import the activeDownloads map
-let activeDownloads: Map<string, any>
-try {
-  const startModule = require('../start/route')
-  activeDownloads = startModule.activeDownloads
-} catch (error) {
-  console.warn('[Queue] Could not import activeDownloads map')
-  activeDownloads = new Map()
-}
+import { activeDownloads } from '../start/route'
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn, ChildProcess } from 'child_process'
+import { broadcastProgress } from '../progress/route'
 
 // In-memory storage for active downloads (in production, use Redis or database)
-const activeDownloads = new Map<string, {
+export const activeDownloads = new Map<string, {
   process: ChildProcess
   startTime: number
   status: 'downloading' | 'paused' | 'completed' | 'failed'
@@ -19,15 +20,26 @@ let sseClients: Response[] = []
 export async function POST(request: NextRequest) {
   try {
     const { id, videoId, quality } = await request.json()
+    
+    console.log(`[Queue] POST request received - ID: ${id}, Video: ${videoId}, Quality: ${quality}`)
+    console.log(`[Queue] Current activeDownloads size: ${activeDownloads.size}`)
+    console.log(`[Queue] Active download IDs: ${Array.from(activeDownloads.keys())}`)
 
     if (!id || !videoId || !quality) {
+      console.error(`[Queue] Missing parameters - ID: ${id}, Video: ${videoId}, Quality: ${quality}`)
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
     }
 
     // Check if already downloading
     if (activeDownloads.has(id)) {
       const existing = activeDownloads.get(id)
+      console.log(`[Queue] Found existing download for ${id}:`, { 
+        status: existing?.status, 
+        progress: existing?.progress 
+      })
+      
       if (existing && existing.status === 'downloading') {
+        console.log(`[Queue] 409 - Download already in progress: ${id}`)
         return NextResponse.json({ error: 'Download already in progress' }, { status: 409 })
       } else {
         // Clean up stale entry
@@ -80,51 +92,84 @@ export async function POST(request: NextRequest) {
     }
 
     activeDownloads.set(id, downloadInfo)
+    console.log(`[Queue] Added to activeDownloads: ${id}. New size: ${activeDownloads.size}`)
+    
+    // Immediately broadcast initial status
+    broadcastProgress({
+      id,
+      status: downloadInfo.status,
+      progress: downloadInfo.progress,
+      downloadedSize: downloadInfo.downloadedSize,
+      totalSize: downloadInfo.totalSize,
+      speed: downloadInfo.speed,
+      eta: downloadInfo.eta,
+      timestamp: Date.now()
+    })
+    console.log(`[Queue] Initial status broadcast for: ${id}`)
 
     // Parse yt-dlp output for progress
     ytDlpProcess.stdout.on('data', (data) => {
       const output = data.toString()
-      console.log(`[Queue] yt-dlp output (${id}):`, output.trim())
+      console.log(`[Queue] yt-dlp raw output (${id}):`, JSON.stringify(output))
       const lines = output.split('\n')
       
       for (const line of lines) {
-        if (line.includes('%') && line.includes('[download]')) {
-          try {
-            // More flexible progress parsing
-            // Example: [download]  45.2% of 162.3MiB at 2.5MiB/s ETA 01:23
-            const progressMatch = line.match(/\[download\]\s*(\d+\.?\d*)%/)
-            const sizeMatch = line.match(/of\s+([\d.]+\w+)/)
-            const speedMatch = line.match(/at\s+([\d.]+\w+\/s)/)
-            const etaMatch = line.match(/ETA\s+([\d:]+)/)
-            
-            if (progressMatch) {
-              const progress = parseFloat(progressMatch[1])
-              downloadInfo.progress = progress
+        if (line.trim()) {
+          console.log(`[Queue] Processing line (${id}):`, line.trim())
+          
+          // Check for various progress patterns
+          if (line.includes('%') || line.includes('[download]')) {
+            try {
+              // Pattern 1: [download]  45.2% of 162.3MiB at 2.5MiB/s ETA 01:23
+              let progressMatch = line.match(/(\d+\.?\d*)%/)
+              let sizeMatch = line.match(/of\s+([\d.]+\w+)/)
+              let speedMatch = line.match(/at\s+([\d.]+\w+\/s)/)
+              let etaMatch = line.match(/ETA\s+([\d:]+)/)
               
-              if (sizeMatch) {
-                downloadInfo.totalSize = sizeMatch[1]
-                // Calculate downloaded size
-                const totalBytes = parseFloat(sizeMatch[1])
-                const unit = sizeMatch[1].replace(/[\d.]/g, '')
-                downloadInfo.downloadedSize = `${(totalBytes * progress / 100).toFixed(1)}${unit}`
+              // Pattern 2: [download] 45.2% of ~162.3MiB at 2.5MiB/s ETA 01:23
+              if (!progressMatch) {
+                progressMatch = line.match(/\[download\]\s*(\d+\.?\d*)%/)
               }
               
-              if (speedMatch) {
-                downloadInfo.speed = speedMatch[1]
+              if (progressMatch) {
+                const progress = parseFloat(progressMatch[1])
+                console.log(`[Queue] Found progress (${id}): ${progress}%`)
+                downloadInfo.progress = progress
+                
+                if (sizeMatch) {
+                  downloadInfo.totalSize = sizeMatch[1]
+                  // Calculate downloaded size
+                  const totalNumeric = parseFloat(sizeMatch[1])
+                  const unit = sizeMatch[1].replace(/[\d.]/g, '')
+                  downloadInfo.downloadedSize = `${(totalNumeric * progress / 100).toFixed(1)}${unit}`
+                }
+                
+                if (speedMatch) {
+                  downloadInfo.speed = speedMatch[1]
+                }
+                
+                if (etaMatch) {
+                  downloadInfo.eta = etaMatch[1]
+                } else {
+                  downloadInfo.eta = progress < 100 ? 'calculating...' : '00:00'
+                }
+                
+                // Broadcast progress to SSE clients
+                broadcastProgress({
+                  id,
+                  status: downloadInfo.status,
+                  progress: downloadInfo.progress,
+                  downloadedSize: downloadInfo.downloadedSize,
+                  totalSize: downloadInfo.totalSize,
+                  speed: downloadInfo.speed,
+                  eta: downloadInfo.eta,
+                  timestamp: Date.now()
+                })
+                console.log(`[Queue] Broadcasting progress (${id}): ${progress}% - ${downloadInfo.downloadedSize}/${downloadInfo.totalSize} @ ${downloadInfo.speed}`)
               }
-              
-              if (etaMatch) {
-                downloadInfo.eta = etaMatch[1]
-              } else {
-                downloadInfo.eta = '--:--'
-              }
-              
-              // Broadcast progress to SSE clients
-              broadcastProgress(id, downloadInfo)
-              console.log(`[Queue] Progress update (${id}): ${progress}% - ${downloadInfo.downloadedSize}/${downloadInfo.totalSize} @ ${downloadInfo.speed}`)
+            } catch (e) {
+              console.warn(`[Queue] Error parsing progress line (${id}):`, e, 'Line:', line)
             }
-          } catch (e) {
-            console.warn('[Queue] Error parsing progress:', e)
           }
         }
       }
@@ -157,7 +202,16 @@ export async function POST(request: NextRequest) {
       }
       
       // Broadcast final status
-      broadcastProgress(id, downloadInfo)
+      broadcastProgress({
+        id,
+        status: downloadInfo.status,
+        progress: downloadInfo.progress,
+        downloadedSize: downloadInfo.downloadedSize,
+        totalSize: downloadInfo.totalSize,
+        speed: downloadInfo.speed,
+        eta: downloadInfo.eta,
+        timestamp: Date.now()
+      })
       
       // Clean up immediately for failed downloads, delay for completed
       const cleanupDelay = code === 0 ? 30000 : 5000 // 30s for success, 5s for failure
@@ -181,40 +235,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to broadcast progress to SSE clients
-function broadcastProgress(id: string, downloadInfo: any) {
-  const message = JSON.stringify({
-    id,
-    status: downloadInfo.status,
-    progress: downloadInfo.progress,
-    downloadedSize: downloadInfo.downloadedSize,
-    totalSize: downloadInfo.totalSize,
-    speed: downloadInfo.speed,
-    eta: downloadInfo.eta,
-    timestamp: Date.now()
-  })
-
-  console.log(`[Queue] Broadcasting progress for ${id}:`, message)
-
-  // Import the SSE broadcasting function from the progress route
-  try {
-    const { broadcastProgress: sseBroadcast } = require('../progress/route')
-    if (sseBroadcast) {
-      sseBroadcast({
-        id,
-        status: downloadInfo.status,
-        progress: downloadInfo.progress,
-        downloadedSize: downloadInfo.downloadedSize,
-        totalSize: downloadInfo.totalSize,
-        speed: downloadInfo.speed,
-        eta: downloadInfo.eta,
-        timestamp: Date.now()
-      })
-    }
-  } catch (error) {
-    console.warn('[Queue] Failed to broadcast progress:', error)
-  }
-}
-
-// Export for use in SSE endpoint
+// Export for use in SSE endpoint  
 export { activeDownloads, sseClients }
