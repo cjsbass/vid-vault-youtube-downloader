@@ -82,18 +82,10 @@ export const MatrixRain: React.FC = () => {
       setup()
     }
 
-    // Also watch for content height changes
-    const resizeObserver = new ResizeObserver(() => {
-      cancelAnimationFrame(animationFrameId)
-      setup()
-    })
-    
-    resizeObserver.observe(document.body)
     window.addEventListener("resize", handleResize)
 
     return () => {
       window.removeEventListener("resize", handleResize)
-      resizeObserver.disconnect()
       cancelAnimationFrame(animationFrameId)
     }
   }, [])
