@@ -25,19 +25,19 @@ export const MatrixRain: React.FC = () => {
       const nums = "0123456789"
       const alphabet = katakana + latin + nums
 
-      const fontSize = 16
+      const fontSize = 10 // Reduced from 16 for higher density
       const columns = Math.floor(canvas.width / fontSize)
 
       const rainDrops: number[] = []
       for (let x = 0; x < columns; x++) {
-        rainDrops[x] = 1
+        rainDrops[x] = Math.floor(Math.random() * canvas.height / fontSize) // Random starting positions
       }
 
       let frameCount = 0
-      const frameSkip = 3 // Only update every 3rd frame to slow down animation
+      const frameSkip = 6 // Increased from 3 for much slower animation
 
       const draw = () => {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.05)"
+        ctx.fillStyle = "rgba(0, 0, 0, 0.04)" // Slightly less fade for denser effect
         ctx.fillRect(0, 0, canvas.width, canvas.height)
 
         ctx.fillStyle = "#0F0" // Green text
