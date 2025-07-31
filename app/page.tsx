@@ -30,6 +30,7 @@ interface VideoData {
     size: string
     url: string
     torrentUrl: string
+    isExact?: boolean
   }[]
 }
 
@@ -64,39 +65,43 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
     realSizes = sizesData.sizes || {}
   }
 
-  // Available download qualities with real sizes
+    // Available download qualities with real sizes
   const allQualities = [
     { 
       quality: "1080p", 
       size: realSizes["1080"] || "~150-250 MB", 
       url: `/api/download?videoId=${videoId}&quality=1080`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_1080p.mp4&tr=udp://tracker.openbittorrent.com:80`,
-      available: realSizes["1080"] && !realSizes["1080"].includes("~")
+      available: !!realSizes["1080"], // Available if we have any size info
+      isExact: realSizes["1080"] && !realSizes["1080"].includes("~") // Track if size is exact
     },
     { 
       quality: "720p", 
       size: realSizes["720"] || "~80-120 MB", 
       url: `/api/download?videoId=${videoId}&quality=720`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_720p.mp4&tr=udp://tracker.openbittorrent.com:80`,
-      available: realSizes["720"] && !realSizes["720"].includes("~")
+      available: !!realSizes["720"], // Available if we have any size info
+      isExact: realSizes["720"] && !realSizes["720"].includes("~") // Track if size is exact
     },
     { 
       quality: "480p", 
       size: realSizes["480"] || "~40-60 MB", 
       url: `/api/download?videoId=${videoId}&quality=480`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_480p.mp4&tr=udp://tracker.openbittorrent.com:80`,
-      available: realSizes["480"] && !realSizes["480"].includes("~")
+      available: !!realSizes["480"], // Available if we have any size info
+      isExact: realSizes["480"] && !realSizes["480"].includes("~") // Track if size is exact
     },
     { 
       quality: "360p", 
-      size: realSizes["360"] || "~20-30 MB", 
+      size: realSizes["360"] || "~20-30 MB",
       url: `/api/download?videoId=${videoId}&quality=360`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_360p.mp4&tr=udp://tracker.openbittorrent.com:80`,
-      available: realSizes["360"] && !realSizes["360"].includes("~")
+      available: !!realSizes["360"], // Available if we have any size info
+      isExact: realSizes["360"] && !realSizes["360"].includes("~") // Track if size is exact
     },
   ]
   
-  // Only show qualities that are actually available
+  // Show qualities that have size information (exact or approximate)
   const resolutions = allQualities.filter(quality => quality.available)
 
   return {
@@ -104,7 +109,13 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
     title: oembedData.title,
     thumbnail,
     duration: "Unknown", // Would need additional API call for duration
-    resolutions
+    resolutions: resolutions.map(res => ({
+      quality: res.quality,
+      size: res.size,
+      url: res.url,
+      torrentUrl: res.torrentUrl,
+      isExact: res.isExact
+    }))
   }
 }
 

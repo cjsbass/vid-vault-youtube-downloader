@@ -75,10 +75,11 @@ export async function GET(request: NextRequest) {
       const filesize = format.filesize || format.filesize_approx || 0
       const vcodec = format.vcodec
       const ext = format.ext
+      const acodec = format.acodec
       
       // Only consider video formats (not audio-only)
       if (height && filesize > 0 && vcodec && vcodec !== 'none') {
-        console.log(`[Railway Debug] Format: ${format.format_id}, Height: ${height}, Size: ${filesize}, Codec: ${vcodec}, Ext: ${ext}`)
+        console.log(`[Local Debug] Format: ${format.format_id}, Height: ${height}, Size: ${filesize}, Codec: ${vcodec}, Audio: ${acodec}, Ext: ${ext}`)
         
         // Determine quality category
         let quality = ""
@@ -87,8 +88,24 @@ export async function GET(request: NextRequest) {
         else if (height >= 480) quality = "480"
         else if (height >= 360) quality = "360"
         
-        if (quality && (!bestFormats[quality] || filesize > bestFormats[quality].filesize)) {
-          bestFormats[quality] = { height, filesize, format_id: format.format_id }
+        if (quality) {
+          // Prefer formats with both video and audio codecs
+          const hasAudio = acodec && acodec !== 'none'
+          const currentBest = bestFormats[quality]
+          
+          if (!currentBest || 
+              (hasAudio && !currentBest.hasAudio) || // Prefer combined formats
+              (hasAudio === currentBest.hasAudio && filesize > currentBest.filesize)) { // If same audio status, prefer larger size
+            bestFormats[quality] = { 
+              height, 
+              filesize, 
+              format_id: format.format_id,
+              hasAudio,
+              vcodec,
+              acodec,
+              ext
+            }
+          }
         }
       }
     }
@@ -96,10 +113,11 @@ export async function GET(request: NextRequest) {
     // Convert best formats to readable sizes
     for (const [quality, format] of Object.entries(bestFormats)) {
       sizes[quality] = formatBytes(format.filesize)
-      console.log(`[Railway Debug] Best ${quality}p: ${format.format_id} (${formatBytes(format.filesize)})`)
+      console.log(`[Local Debug] Best ${quality}p: ${format.format_id} (${formatBytes(format.filesize)}) - ${format.hasAudio ? 'Video+Audio' : 'Video only'} - ${format.vcodec}/${format.acodec}`)
     }
 
-    console.log(`[Railway Debug] Extracted sizes:`, sizes)
+    console.log(`[Local Debug] Extracted sizes:`, sizes)
+    console.log(`[Local Debug] Found ${Object.keys(bestFormats).length} exact quality matches out of ${formats.length} total formats`)
 
     // If we couldn't get specific sizes, provide fallbacks
     if (!sizes["1080"]) sizes["1080"] = "~150-250 MB"
@@ -107,7 +125,7 @@ export async function GET(request: NextRequest) {
     if (!sizes["480"]) sizes["480"] = "~40-60 MB" 
     if (!sizes["360"]) sizes["360"] = "~20-30 MB"
 
-    console.log(`[Railway Debug] Final sizes:`, sizes)
+    console.log(`[Local Debug] Final sizes:`, sizes)
 
     return NextResponse.json({ sizes })
 
