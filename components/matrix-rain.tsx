@@ -33,8 +33,10 @@ export const MatrixRain: React.FC = () => {
         rainDrops[x] = 1
       }
 
-      let frameCount = 0
-      const frameSkip = 2 // Just slightly slower
+      // Frame rate throttling settings
+      const fps = 15 // Target frames per second. Lower is slower.
+      const nextFrameDelay = 1000 / fps
+      let lastTime = 0
 
       const draw = () => {
         ctx.fillStyle = "rgba(0, 0, 0, 0.05)"
@@ -47,21 +49,29 @@ export const MatrixRain: React.FC = () => {
           const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length))
           ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize)
 
-          if (frameCount % frameSkip === 0) {
-            if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-              rainDrops[i] = 0
-            }
-            rainDrops[i]++
+          if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            rainDrops[i] = 0
           }
+          rainDrops[i]++
         }
-        frameCount++
       }
 
-      const animate = () => {
-        draw()
+      const animate = (timeStamp: number) => {
+        // Calculate the time elapsed since the last frame
+        const deltaTime = timeStamp - lastTime
+
+        // Only draw a new frame if the elapsed time is greater than our delay
+        if (deltaTime > nextFrameDelay) {
+          draw()
+          // Update the lastTime to the current timeStamp
+          lastTime = timeStamp
+        }
+
+        // Continue the loop
         animationFrameId = requestAnimationFrame(animate)
       }
-      animate()
+      // Initial call to start the loop
+      animate(0)
     }
 
     setup()
