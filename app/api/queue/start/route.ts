@@ -34,15 +34,28 @@ export async function POST(request: NextRequest) {
     // Construct the YouTube URL
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
     
-    // Start yt-dlp process
+    // Create downloads directory if it doesn't exist
+    try {
+      const { execSync } = require('child_process')
+      execSync('mkdir -p /tmp/downloads', { stdio: 'ignore' })
+    } catch (e) {
+      console.warn('[Queue] Could not create downloads directory:', e)
+    }
+
+    // Start yt-dlp process with better options
     const ytDlpProcess = spawn('yt-dlp', [
       '--newline',
       '--progress',
       '--no-part',
+      '--no-playlist',
+      '--extract-flat', 'false',
       '--output', `/tmp/downloads/%(title)s_${quality}.%(ext)s`,
-      '--format', `best[height<=${quality.replace('p', '')}]`,
+      '--format', `best[height<=${quality.replace('p', '')}]/best`,
+      '--no-warnings',
       youtubeUrl
-    ])
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
 
     // Initialize download tracking
     const downloadInfo = {
@@ -61,26 +74,44 @@ export async function POST(request: NextRequest) {
     // Parse yt-dlp output for progress
     ytDlpProcess.stdout.on('data', (data) => {
       const output = data.toString()
+      console.log(`[Queue] yt-dlp output (${id}):`, output.trim())
       const lines = output.split('\n')
       
       for (const line of lines) {
-        if (line.includes('%')) {
+        if (line.includes('%') && line.includes('[download]')) {
           try {
-            // Parse progress line: [download]  45.2% of 162.3MiB at 2.5MiB/s ETA 01:23
-            const progressMatch = line.match(/\[download\]\s+(\d+\.?\d*)%\s+of\s+([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)(?:\s+ETA\s+([\d:]+))?/)
+            // More flexible progress parsing
+            // Example: [download]  45.2% of 162.3MiB at 2.5MiB/s ETA 01:23
+            const progressMatch = line.match(/\[download\]\s*(\d+\.?\d*)%/)
+            const sizeMatch = line.match(/of\s+([\d.]+\w+)/)
+            const speedMatch = line.match(/at\s+([\d.]+\w+\/s)/)
+            const etaMatch = line.match(/ETA\s+([\d:]+)/)
             
             if (progressMatch) {
-              const [, progressStr, totalSize, speed, eta] = progressMatch
-              const progress = parseFloat(progressStr)
-              
+              const progress = parseFloat(progressMatch[1])
               downloadInfo.progress = progress
-              downloadInfo.totalSize = totalSize
-              downloadInfo.speed = speed
-              downloadInfo.eta = eta || '--:--'
-              downloadInfo.downloadedSize = `${(parseFloat(totalSize) * progress / 100).toFixed(1)}${totalSize.replace(/[\d.]/g, '')}`
+              
+              if (sizeMatch) {
+                downloadInfo.totalSize = sizeMatch[1]
+                // Calculate downloaded size
+                const totalBytes = parseFloat(sizeMatch[1])
+                const unit = sizeMatch[1].replace(/[\d.]/g, '')
+                downloadInfo.downloadedSize = `${(totalBytes * progress / 100).toFixed(1)}${unit}`
+              }
+              
+              if (speedMatch) {
+                downloadInfo.speed = speedMatch[1]
+              }
+              
+              if (etaMatch) {
+                downloadInfo.eta = etaMatch[1]
+              } else {
+                downloadInfo.eta = '--:--'
+              }
               
               // Broadcast progress to SSE clients
               broadcastProgress(id, downloadInfo)
+              console.log(`[Queue] Progress update (${id}): ${progress}% - ${downloadInfo.downloadedSize}/${downloadInfo.totalSize} @ ${downloadInfo.speed}`)
             }
           } catch (e) {
             console.warn('[Queue] Error parsing progress:', e)
@@ -139,16 +170,26 @@ function broadcastProgress(id: string, downloadInfo: any) {
     timestamp: Date.now()
   })
 
-  sseClients.forEach((client, index) => {
-    try {
-      const encoder = new TextEncoder()
-      const data = encoder.encode(`data: ${message}\n\n`)
-      client.body?.getWriter().write(data)
-    } catch (error) {
-      console.warn('[Queue] Failed to send SSE message, removing client:', error)
-      sseClients.splice(index, 1)
+  console.log(`[Queue] Broadcasting progress for ${id}:`, message)
+
+  // Import the SSE broadcasting function from the progress route
+  try {
+    const { broadcastProgress: sseBroadcast } = require('../progress/route')
+    if (sseBroadcast) {
+      sseBroadcast({
+        id,
+        status: downloadInfo.status,
+        progress: downloadInfo.progress,
+        downloadedSize: downloadInfo.downloadedSize,
+        totalSize: downloadInfo.totalSize,
+        speed: downloadInfo.speed,
+        eta: downloadInfo.eta,
+        timestamp: Date.now()
+      })
     }
-  })
+  } catch (error) {
+    console.warn('[Queue] Failed to broadcast progress:', error)
+  }
 }
 
 // Export for use in SSE endpoint

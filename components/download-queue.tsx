@@ -60,7 +60,7 @@ const StatusBadge: React.FC<{ status: QueueItem['status'] }> = ({ status }) => {
   }
   
   return (
-    <Badge className={`${colors[status]} font-mono text-xs`}>
+    <Badge className={`${colors[status]} font-inter text-xs`}>
       {status.toUpperCase()}
     </Badge>
   )
@@ -91,11 +91,11 @@ const QueueItem: React.FC<{
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <h4 className="text-green-400 font-mono text-sm truncate">
+          <h4 className="text-green-400 font-inter text-sm truncate">
             {item.title}
           </h4>
           <StatusBadge status={item.status} />
-          <Badge className="bg-gray-900/20 text-gray-400 border-gray-400/30 font-mono text-xs">
+          <Badge className="bg-gray-900/20 text-gray-400 border-gray-400/30 font-inter text-xs">
             {item.quality}
           </Badge>
         </div>
@@ -109,7 +109,7 @@ const QueueItem: React.FC<{
         </div>
         
         {/* Stats */}
-        <div className="flex items-center gap-4 text-xs font-mono text-green-300">
+        <div className="flex items-center gap-4 text-xs font-inter text-green-300">
           <span>{item.progress.toFixed(1)}%</span>
           <span>{item.downloadedSize} / {item.size}</span>
           {item.status === 'downloading' && (
@@ -180,19 +180,19 @@ export const DownloadQueue: React.FC<DownloadQueueProps> = ({
     <Card className="bg-black/60 border-green-500/30 backdrop-blur-sm shadow-[0_0_20px_rgba(50,205,50,0.3)] rounded-none mt-6">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-green-400 font-mono text-lg flex items-center gap-2">
-            <Download className="w-5 h-5" />
-            DOWNLOAD QUEUE
-          </CardTitle>
+                  <CardTitle className="text-green-400 font-inter text-lg flex items-center gap-2">
+          <Download className="w-5 h-5" />
+          DOWNLOAD QUEUE
+        </CardTitle>
           
           <div className="flex items-center gap-2">
-            <Badge className="bg-green-900/20 text-green-400 border-green-400/30 font-mono">
+            <Badge className="bg-green-900/20 text-green-400 border-green-400/30 font-inter">
               {queue.length} total
             </Badge>
-            <Badge className="bg-blue-900/20 text-blue-400 border-blue-400/30 font-mono">
+            <Badge className="bg-blue-900/20 text-blue-400 border-blue-400/30 font-inter">
               {activeDownloads} active
             </Badge>
-            <Badge className="bg-yellow-900/20 text-yellow-400 border-yellow-400/30 font-mono">
+            <Badge className="bg-yellow-900/20 text-yellow-400 border-yellow-400/30 font-inter">
               {pendingCount} pending
             </Badge>
           </div>
@@ -201,7 +201,7 @@ export const DownloadQueue: React.FC<DownloadQueueProps> = ({
         {/* Overall Progress */}
         {activeDownloads > 0 && (
           <div className="mt-3">
-            <div className="flex justify-between text-sm font-mono text-green-300 mb-1">
+            <div className="flex justify-between text-sm font-inter text-green-300 mb-1">
               <span>Overall Progress</span>
               <span>{totalProgress.toFixed(1)}%</span>
             </div>
@@ -218,7 +218,7 @@ export const DownloadQueue: React.FC<DownloadQueueProps> = ({
             <Button
               size="sm"
               variant="ghost"
-              className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 font-mono"
+              className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 font-inter"
               onClick={onPauseAll}
             >
               <PauseCircle className="w-4 h-4 mr-1" />
@@ -229,7 +229,7 @@ export const DownloadQueue: React.FC<DownloadQueueProps> = ({
           <Button
             size="sm"
             variant="ghost"
-            className="text-green-400 hover:text-green-300 hover:bg-green-400/10 font-mono"
+            className="text-green-400 hover:text-green-300 hover:bg-green-400/10 font-inter"
             onClick={onResumeAll}
           >
             <PlayCircle className="w-4 h-4 mr-1" />
@@ -240,7 +240,7 @@ export const DownloadQueue: React.FC<DownloadQueueProps> = ({
             <Button
               size="sm"
               variant="ghost"
-              className="text-red-400 hover:text-red-300 hover:bg-red-400/10 font-mono"
+              className="text-red-400 hover:text-red-300 hover:bg-red-400/10 font-inter"
               onClick={onClear}
             >
               <Trash2 className="w-4 h-4 mr-1" />
@@ -251,7 +251,7 @@ export const DownloadQueue: React.FC<DownloadQueueProps> = ({
           <Button
             size="sm"
             variant="ghost"
-            className="text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 font-mono"
+            className="text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 font-inter"
             onClick={() => {
               // Open downloads folder (platform specific)
               if (typeof window !== 'undefined') {

@@ -140,40 +140,64 @@ export const useDownloadQueue = (): UseDownloadQueueReturn => {
 
   // Set up Server-Sent Events for real-time progress updates
   useEffect(() => {
-    const eventSource = new EventSource('/api/queue/progress')
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        setQueue(prev => prev.map(item => 
-          item.id === data.id 
-            ? { 
-                ...item, 
-                progress: data.progress,
-                downloadedSize: data.downloadedSize,
-                speed: data.speed,
-                eta: data.eta,
-                status: data.status,
-                ...(data.status === 'completed' && { completedAt: Date.now() })
-              }
-            : item
-        ))
-        
-        // Start next download when current completes
-        if (data.status === 'completed') {
-          setTimeout(startNextDownload, 500)
-        }
-      } catch (e) {
-        console.error('Error parsing SSE data:', e)
+    const connectSSE = () => {
+      const eventSource = new EventSource('/api/queue/progress')
+      
+      eventSource.onopen = () => {
+        console.log('[Queue] SSE connected')
       }
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          
+          // Skip connection message
+          if (data.type === 'connected') {
+            console.log('[Queue] SSE connection confirmed')
+            return
+          }
+          
+          console.log('[Queue] Received progress update:', data)
+          
+          setQueue(prev => prev.map(item => 
+            item.id === data.id 
+              ? { 
+                  ...item, 
+                  progress: data.progress || item.progress,
+                  downloadedSize: data.downloadedSize || item.downloadedSize,
+                  speed: data.speed || item.speed,
+                  eta: data.eta || item.eta,
+                  status: data.status || item.status,
+                  ...(data.status === 'completed' && { completedAt: Date.now() })
+                }
+              : item
+          ))
+          
+          // Start next download when current completes
+          if (data.status === 'completed') {
+            setTimeout(startNextDownload, 500)
+          }
+        } catch (e) {
+          console.error('Error parsing SSE data:', e)
+        }
+      }
+
+      eventSource.onerror = (error) => {
+        console.warn('SSE connection error:', error)
+        eventSource.close()
+        // Retry connection after 3 seconds
+        setTimeout(connectSSE, 3000)
+      }
+
+      return eventSource
     }
 
-    eventSource.onerror = () => {
-      console.warn('SSE connection lost, will retry...')
-    }
+    const eventSource = connectSSE()
 
     return () => {
-      eventSource.close()
+      if (eventSource) {
+        eventSource.close()
+      }
     }
   }, [startNextDownload])
 
