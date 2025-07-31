@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 
+// Force Railway deployment refresh
 export const metadata: Metadata = {
   title: 'Vid Vault - Matrix YouTube Downloader',
   description: 'Download YouTube videos with Matrix-style interface. High-quality downloads with resume capability.',
