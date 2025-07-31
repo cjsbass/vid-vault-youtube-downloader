@@ -18,46 +18,87 @@ const vt323 = VT323({
   variable: "--font-vt323",
 })
 
-const mockVideoData = {
-  title: "Cyberpunk Dystopian Music Mix",
-  thumbnail: "/cyberpunk-thumbnail.png",
-  resolutions: [
+// YouTube video data interface
+interface VideoData {
+  id: string
+  title: string
+  thumbnail: string
+  duration: string
+  resolutions: {
+    quality: string
+    size: string
+    url: string
+    torrentUrl: string
+  }[]
+}
+
+// Utility functions
+function extractVideoId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+  ]
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern)
+    if (match) return match[1]
+  }
+  return null
+}
+
+async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
+  // Get video info from YouTube oEmbed API (no API key required)
+  const oembedResponse = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
+  const oembedData = await oembedResponse.json()
+  
+  // YouTube thumbnail URLs (high quality)
+  const thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+  
+  // Available download qualities
+  const resolutions = [
     { 
       quality: "1080p", 
-      size: "150 MB", 
-      url: "#", 
-      torrentUrl: "magnet:?xt=urn:btih:1234567890abcdef1234567890abcdef12345678&dn=Cyberpunk_Dystopian_Music_Mix_1080p.mp4&tr=udp://tracker.openbittorrent.com:80"
+      size: "~150-250 MB", 
+      url: `/api/download?videoId=${videoId}&quality=1080`,
+      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_1080p.mp4&tr=udp://tracker.openbittorrent.com:80`
     },
     { 
       quality: "720p", 
-      size: "95 MB", 
-      url: "#", 
-      torrentUrl: "magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12&dn=Cyberpunk_Dystopian_Music_Mix_720p.mp4&tr=udp://tracker.openbittorrent.com:80"
+      size: "~80-120 MB", 
+      url: `/api/download?videoId=${videoId}&quality=720`,
+      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_720p.mp4&tr=udp://tracker.openbittorrent.com:80`
     },
     { 
       quality: "480p", 
-      size: "50 MB", 
-      url: "#", 
-      torrentUrl: "magnet:?xt=urn:btih:567890abcdef1234567890abcdef1234567890ab&dn=Cyberpunk_Dystopian_Music_Mix_480p.mp4&tr=udp://tracker.openbittorrent.com:80"
+      size: "~40-60 MB", 
+      url: `/api/download?videoId=${videoId}&quality=480`,
+      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_480p.mp4&tr=udp://tracker.openbittorrent.com:80`
     },
     { 
       quality: "360p", 
-      size: "25 MB", 
-      url: "#", 
-      torrentUrl: "magnet:?xt=urn:btih:90abcdef1234567890abcdef1234567890abcdef&dn=Cyberpunk_Dystopian_Music_Mix_360p.mp4&tr=udp://tracker.openbittorrent.com:80"
+      size: "~20-30 MB", 
+      url: `/api/download?videoId=${videoId}&quality=360`,
+      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_360p.mp4&tr=udp://tracker.openbittorrent.com:80`
     },
-  ],
+  ]
+
+  return {
+    id: videoId,
+    title: oembedData.title,
+    thumbnail,
+    duration: "Unknown", // Would need additional API call for duration
+    resolutions
+  }
 }
 
-type VideoData = typeof mockVideoData | null
+const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/
 
 export default function YoutubeDownloaderPage() {
   const [url, setUrl] = useState("")
-  const [videoData, setVideoData] = useState<VideoData>(null)
+  const [videoData, setVideoData] = useState<VideoData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/
+  const [downloadingQuality, setDownloadingQuality] = useState<string | null>(null)
 
   const analyzeVideo = useCallback(async (videoUrl: string) => {
     if (!videoUrl.trim()) {
@@ -70,16 +111,26 @@ export default function YoutubeDownloaderPage() {
       return
     }
 
+    const videoId = extractVideoId(videoUrl)
+    if (!videoId) {
+      setError(">>> ERROR: Could not extract video ID from URL.")
+      return
+    }
+
     setIsLoading(true)
     setError(null)
     setVideoData(null)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    setVideoData(mockVideoData)
-    setIsLoading(false)
-  }, [youtubeRegex])
+    try {
+      const videoData = await fetchYouTubeVideoData(videoId)
+      setVideoData(videoData)
+    } catch (error) {
+      console.error("Error fetching video data:", error)
+      setError(">>> ERROR: Failed to fetch video information. Network or API error.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   // Auto-analyze when a valid YouTube URL is detected
   useEffect(() => {
@@ -96,11 +147,21 @@ export default function YoutubeDownloaderPage() {
     }, 800) // Debounce for 800ms
 
     return () => clearTimeout(timeoutId)
-  }, [url, analyzeVideo, youtubeRegex])
+  }, [url, analyzeVideo])
 
   const handleFetchVideo = async (e: React.FormEvent) => {
     e.preventDefault()
     analyzeVideo(url)
+  }
+
+  const handleDownload = (quality: string) => {
+    setDownloadingQuality(quality)
+    setError(null)
+    
+    // Reset loading state after a few seconds (download should have started)
+    setTimeout(() => {
+      setDownloadingQuality(null)
+    }, 3000)
   }
 
   return (
@@ -162,11 +223,16 @@ export default function YoutubeDownloaderPage() {
               <CardHeader>
                 <div className="aspect-video overflow-hidden border-2 border-green-500/50">
                   <Image
-                    src={videoData.thumbnail || "/placeholder.svg"}
+                    src={videoData.thumbnail}
                     alt={videoData.title}
                     width={1280}
                     height={720}
                     className="w-full h-full object-cover"
+                    unoptimized={true}
+                    onError={(e) => {
+                      // Fallback to standard resolution thumbnail if maxres fails
+                      e.currentTarget.src = `https://img.youtube.com/vi/${videoData.id}/hqdefault.jpg`
+                    }}
                   />
                 </div>
                 <CardTitle className="font-vt323 text-2xl text-green-400 pt-4">&gt; {videoData.title}</CardTitle>
@@ -186,13 +252,25 @@ export default function YoutubeDownloaderPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          asChild
                           className="text-green-400 hover:bg-green-400/10 hover:text-green-300 rounded-none font-vt323"
+                          onClick={() => {
+                            handleDownload(res.quality)
+                            // Trigger download by navigating to our API endpoint
+                            window.location.href = `/api/download?videoId=${videoData.id}&quality=${res.quality.replace('p', '')}`
+                          }}
+                          disabled={downloadingQuality === res.quality}
                         >
-                          <a href={res.url}>
-                            <Download className="mr-2 h-4 w-4" />
-                            DOWNLOAD
-                          </a>
+                          {downloadingQuality === res.quality ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              PREPARING...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="mr-2 h-4 w-4" />
+                              DOWNLOAD
+                            </>
+                          )}
                         </Button>
                         <Button
                           variant="ghost"

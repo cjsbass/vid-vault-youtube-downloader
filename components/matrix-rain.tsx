@@ -30,14 +30,14 @@ export const MatrixRain: React.FC = () => {
 
       const rainDrops: number[] = []
       for (let x = 0; x < columns; x++) {
-        rainDrops[x] = Math.floor(Math.random() * canvas.height / fontSize) // Random starting positions
+        rainDrops[x] = 1
       }
 
       let frameCount = 0
-      const frameSkip = 6 // Increased from 3 for much slower animation
+      const frameSkip = 2 // Just slightly slower
 
       const draw = () => {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.05)" // Back to original fade
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)"
         ctx.fillRect(0, 0, canvas.width, canvas.height)
 
         ctx.fillStyle = "#0F0" // Green text
@@ -47,7 +47,6 @@ export const MatrixRain: React.FC = () => {
           const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length))
           ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize)
 
-          // Only update positions every few frames to slow down animation
           if (frameCount % frameSkip === 0) {
             if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
               rainDrops[i] = 0
