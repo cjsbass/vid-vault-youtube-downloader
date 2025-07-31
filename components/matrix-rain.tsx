@@ -31,8 +31,13 @@ export const MatrixRain: React.FC = () => {
 
       const rainDrops: number[] = []
       for (let x = 0; x < columns; x++) {
-        rainDrops[x] = 1
+        // Randomize initial positions so rain appears immediately across the screen
+        rainDrops[x] = Math.floor(Math.random() * (canvas.height / fontSize))
       }
+      
+      // Initialize canvas with black background immediately
+      ctx.fillStyle = "black"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
 
       // Frame rate throttling settings
       const fps = 15 // Target frames per second. Lower is slower.
@@ -71,6 +76,11 @@ export const MatrixRain: React.FC = () => {
         // Continue the loop
         animationFrameId = requestAnimationFrame(animate)
       }
+      // Run a few initial frames to establish the effect immediately
+      for (let i = 0; i < 10; i++) {
+        draw()
+      }
+      
       // Initial call to start the loop
       animate(0)
     }
