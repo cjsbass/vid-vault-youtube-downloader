@@ -13,10 +13,12 @@ export async function GET(request: NextRequest) {
     // Construct the YouTube URL
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
     
-    // Get all available formats with file sizes
+    console.log(`[Railway Debug] Getting file sizes for video: ${videoId}`)
+    
+    // Get JSON metadata with format information
     const ytDlpProcess = spawn('yt-dlp', [
-      '--list-formats',
-      '--print', '%(format_id)s|%(height)s|%(filesize)s|%(filesize_approx)s',
+      '--dump-json',
+      '--no-download',
       youtubeUrl
     ])
 
@@ -34,6 +36,7 @@ export async function GET(request: NextRequest) {
     await new Promise<void>((resolve, reject) => {
       ytDlpProcess.on('close', (code) => {
         if (code !== 0) {
+          console.error(`[Railway Debug] yt-dlp failed with code ${code}:`, error)
           reject(new Error(`yt-dlp failed: ${error}`))
         } else {
           resolve()
@@ -41,8 +44,14 @@ export async function GET(request: NextRequest) {
       })
     })
 
-    // Parse the output to extract file sizes for different qualities
-    const lines = output.trim().split('\n')
+    console.log(`[Railway Debug] yt-dlp output length: ${output.length}`)
+    
+    // Parse JSON output
+    const videoData = JSON.parse(output)
+    const formats = videoData.formats || []
+    
+    console.log(`[Railway Debug] Found ${formats.length} formats`)
+    
     const sizes: { [key: string]: string } = {}
     
     // Helper function to format bytes into human readable format
@@ -57,30 +66,29 @@ export async function GET(request: NextRequest) {
       return `${size} ${sizes[i]}`
     }
 
-    // Process each line to find video formats with file sizes
-    for (const line of lines) {
-      if (line.includes('|')) {
-        const parts = line.split('|')
-        if (parts.length >= 4) {
-          const formatId = parts[0].trim()
-          const height = parseInt(parts[1].trim())
-          const filesize = parseInt(parts[2].trim()) || parseInt(parts[3].trim()) || 0
-          
-          // Map height to quality labels
-          if (height && filesize > 0) {
-            if (height >= 1080 && !sizes["1080"]) {
-              sizes["1080"] = formatBytes(filesize)
-            } else if (height >= 720 && height < 1080 && !sizes["720"]) {
-              sizes["720"] = formatBytes(filesize)
-            } else if (height >= 480 && height < 720 && !sizes["480"]) {
-              sizes["480"] = formatBytes(filesize)
-            } else if (height >= 360 && height < 480 && !sizes["360"]) {
-              sizes["360"] = formatBytes(filesize)
-            }
-          }
+    // Process formats to find the best file sizes for each quality
+    for (const format of formats) {
+      const height = format.height
+      const filesize = format.filesize || format.filesize_approx || 0
+      const vcodec = format.vcodec
+      
+      // Only consider video formats (not audio-only)
+      if (height && filesize > 0 && vcodec && vcodec !== 'none') {
+        console.log(`[Railway Debug] Format: ${format.format_id}, Height: ${height}, Size: ${filesize}`)
+        
+        if (height >= 1080 && !sizes["1080"]) {
+          sizes["1080"] = formatBytes(filesize)
+        } else if (height >= 720 && height < 1080 && !sizes["720"]) {
+          sizes["720"] = formatBytes(filesize)
+        } else if (height >= 480 && height < 720 && !sizes["480"]) {
+          sizes["480"] = formatBytes(filesize)
+        } else if (height >= 360 && height < 480 && !sizes["360"]) {
+          sizes["360"] = formatBytes(filesize)
         }
       }
     }
+
+    console.log(`[Railway Debug] Extracted sizes:`, sizes)
 
     // If we couldn't get specific sizes, provide fallbacks
     if (!sizes["1080"]) sizes["1080"] = "~150-250 MB"
@@ -88,7 +96,7 @@ export async function GET(request: NextRequest) {
     if (!sizes["480"]) sizes["480"] = "~40-60 MB" 
     if (!sizes["360"]) sizes["360"] = "~20-30 MB"
 
-    console.log(`Video ${videoId} file sizes:`, sizes)
+    console.log(`[Railway Debug] Final sizes:`, sizes)
 
     return NextResponse.json({ sizes })
 
