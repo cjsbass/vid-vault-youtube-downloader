@@ -3,7 +3,7 @@ import { spawn, ChildProcess } from 'child_process'
 import { broadcastProgress } from '../progress/route'
 
 // In-memory storage for active downloads (in production, use Redis or database)
-export const activeDownloads = new Map<string, {
+const activeDownloads = new Map<string, {
   process: ChildProcess
   startTime: number
   status: 'downloading' | 'paused' | 'completed' | 'failed'
