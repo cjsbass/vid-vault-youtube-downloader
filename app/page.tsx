@@ -53,29 +53,38 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
   // YouTube thumbnail URLs (high quality)
   const thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
   
-  // Available download qualities
+  // Get real file sizes from our API
+  const sizesResponse = await fetch(`/api/video-info?videoId=${videoId}`)
+  let realSizes: { [key: string]: string } = {}
+  
+  if (sizesResponse.ok) {
+    const sizesData = await sizesResponse.json()
+    realSizes = sizesData.sizes || {}
+  }
+
+  // Available download qualities with real sizes
   const resolutions = [
     { 
       quality: "1080p", 
-      size: "~150-250 MB", 
+      size: realSizes["1080"] || "~150-250 MB", 
       url: `/api/download?videoId=${videoId}&quality=1080`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_1080p.mp4&tr=udp://tracker.openbittorrent.com:80`
     },
     { 
       quality: "720p", 
-      size: "~80-120 MB", 
+      size: realSizes["720"] || "~80-120 MB", 
       url: `/api/download?videoId=${videoId}&quality=720`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_720p.mp4&tr=udp://tracker.openbittorrent.com:80`
     },
     { 
       quality: "480p", 
-      size: "~40-60 MB", 
+      size: realSizes["480"] || "~40-60 MB", 
       url: `/api/download?videoId=${videoId}&quality=480`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_480p.mp4&tr=udp://tracker.openbittorrent.com:80`
     },
     { 
       quality: "360p", 
-      size: "~20-30 MB", 
+      size: realSizes["360"] || "~20-30 MB", 
       url: `/api/download?videoId=${videoId}&quality=360`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_360p.mp4&tr=udp://tracker.openbittorrent.com:80`
     },
@@ -98,6 +107,7 @@ export default function YoutubeDownloaderPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [downloadingQuality, setDownloadingQuality] = useState<string | null>(null)
+  const [fetchingSizes, setFetchingSizes] = useState(false)
 
   const analyzeVideo = useCallback(async (videoUrl: string) => {
     if (!videoUrl.trim()) {
@@ -119,6 +129,7 @@ export default function YoutubeDownloaderPage() {
     setIsLoading(true)
     setError(null)
     setVideoData(null)
+    setFetchingSizes(true)
 
     try {
       const videoData = await fetchYouTubeVideoData(videoId)
@@ -128,6 +139,7 @@ export default function YoutubeDownloaderPage() {
       setError(">>> ERROR: Failed to fetch video information. Network or API error.")
     } finally {
       setIsLoading(false)
+      setFetchingSizes(false)
     }
   }, [])
 
@@ -245,7 +257,16 @@ export default function YoutubeDownloaderPage() {
                     >
                       <div className="flex items-center gap-4 font-inter">
                         <span className="text-lg text-green-400">{res.quality}</span>
-                        <span className="text-sm text-green-600">[{res.size}]</span>
+                        <span className="text-sm text-green-600">
+                          {fetchingSizes && res.size.includes('~') ? (
+                            <>
+                              <Loader2 className="inline mr-1 h-3 w-3 animate-spin" />
+                              Getting real size...
+                            </>
+                          ) : (
+                            `[${res.size}]`
+                          )}
+                        </span>
                       </div>
                       <div className="flex gap-2">
                         <Button
