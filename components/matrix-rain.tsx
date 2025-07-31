@@ -17,7 +17,8 @@ export const MatrixRain: React.FC = () => {
 
     const setup = () => {
       canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      // Use the full document height to cover entire page, not just viewport
+      canvas.height = Math.max(document.body.scrollHeight, window.innerHeight)
 
       const katakana =
         "アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン"
@@ -81,13 +82,21 @@ export const MatrixRain: React.FC = () => {
       setup()
     }
 
+    // Also watch for content height changes
+    const resizeObserver = new ResizeObserver(() => {
+      cancelAnimationFrame(animationFrameId)
+      setup()
+    })
+    
+    resizeObserver.observe(document.body)
     window.addEventListener("resize", handleResize)
 
     return () => {
       window.removeEventListener("resize", handleResize)
+      resizeObserver.disconnect()
       cancelAnimationFrame(animationFrameId)
     }
   }, [])
 
-  return <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0" />
+  return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full z-0" style={{ height: '100%', minHeight: '100vh' }} />
 }
