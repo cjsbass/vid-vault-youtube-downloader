@@ -67,25 +67,36 @@ export async function GET(request: NextRequest) {
     }
 
     // Process formats to find the best file sizes for each quality
+    // Track best formats for each quality
+    const bestFormats: { [key: string]: any } = {}
+    
     for (const format of formats) {
       const height = format.height
       const filesize = format.filesize || format.filesize_approx || 0
       const vcodec = format.vcodec
+      const ext = format.ext
       
       // Only consider video formats (not audio-only)
       if (height && filesize > 0 && vcodec && vcodec !== 'none') {
-        console.log(`[Railway Debug] Format: ${format.format_id}, Height: ${height}, Size: ${filesize}`)
+        console.log(`[Railway Debug] Format: ${format.format_id}, Height: ${height}, Size: ${filesize}, Codec: ${vcodec}, Ext: ${ext}`)
         
-        if (height >= 1080 && !sizes["1080"]) {
-          sizes["1080"] = formatBytes(filesize)
-        } else if (height >= 720 && height < 1080 && !sizes["720"]) {
-          sizes["720"] = formatBytes(filesize)
-        } else if (height >= 480 && height < 720 && !sizes["480"]) {
-          sizes["480"] = formatBytes(filesize)
-        } else if (height >= 360 && height < 480 && !sizes["360"]) {
-          sizes["360"] = formatBytes(filesize)
+        // Determine quality category
+        let quality = ""
+        if (height >= 1080) quality = "1080"
+        else if (height >= 720) quality = "720" 
+        else if (height >= 480) quality = "480"
+        else if (height >= 360) quality = "360"
+        
+        if (quality && (!bestFormats[quality] || filesize > bestFormats[quality].filesize)) {
+          bestFormats[quality] = { height, filesize, format_id: format.format_id }
         }
       }
+    }
+    
+    // Convert best formats to readable sizes
+    for (const [quality, format] of Object.entries(bestFormats)) {
+      sizes[quality] = formatBytes(format.filesize)
+      console.log(`[Railway Debug] Best ${quality}p: ${format.format_id} (${formatBytes(format.filesize)})`)
     }
 
     console.log(`[Railway Debug] Extracted sizes:`, sizes)

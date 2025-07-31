@@ -63,32 +63,39 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
   }
 
   // Available download qualities with real sizes
-  const resolutions = [
+  const allQualities = [
     { 
       quality: "1080p", 
       size: realSizes["1080"] || "~150-250 MB", 
       url: `/api/download?videoId=${videoId}&quality=1080`,
-      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_1080p.mp4&tr=udp://tracker.openbittorrent.com:80`
+      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_1080p.mp4&tr=udp://tracker.openbittorrent.com:80`,
+      available: realSizes["1080"] && !realSizes["1080"].includes("~")
     },
     { 
       quality: "720p", 
       size: realSizes["720"] || "~80-120 MB", 
       url: `/api/download?videoId=${videoId}&quality=720`,
-      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_720p.mp4&tr=udp://tracker.openbittorrent.com:80`
+      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_720p.mp4&tr=udp://tracker.openbittorrent.com:80`,
+      available: realSizes["720"] && !realSizes["720"].includes("~")
     },
     { 
       quality: "480p", 
       size: realSizes["480"] || "~40-60 MB", 
       url: `/api/download?videoId=${videoId}&quality=480`,
-      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_480p.mp4&tr=udp://tracker.openbittorrent.com:80`
+      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_480p.mp4&tr=udp://tracker.openbittorrent.com:80`,
+      available: realSizes["480"] && !realSizes["480"].includes("~")
     },
     { 
       quality: "360p", 
       size: realSizes["360"] || "~20-30 MB", 
       url: `/api/download?videoId=${videoId}&quality=360`,
-      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_360p.mp4&tr=udp://tracker.openbittorrent.com:80`
+      torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_360p.mp4&tr=udp://tracker.openbittorrent.com:80`,
+      available: realSizes["360"] && !realSizes["360"].includes("~")
     },
   ]
+  
+  // Only show qualities that are actually available
+  const resolutions = allQualities.filter(quality => quality.available)
 
   return {
     id: videoId,
