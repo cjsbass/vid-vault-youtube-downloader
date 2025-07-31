@@ -6,11 +6,13 @@ import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Download, Youtube, Loader2, Share2 } from "lucide-react"
+import { Download, Youtube, Loader2, Share2, Plus } from "lucide-react"
 import Image from "next/image"
 import { Inter } from "next/font/google"
 import { cn } from "@/lib/utils"
 import { MatrixRain } from "@/components/matrix-rain"
+import { useDownloadQueue } from "@/hooks/useDownloadQueue"
+import { DownloadQueue } from "@/components/download-queue"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -116,6 +118,21 @@ export default function YoutubeDownloaderPage() {
   const [downloadingQuality, setDownloadingQuality] = useState<string | null>(null)
   const [fetchingSizes, setFetchingSizes] = useState(false)
 
+  // Download Queue Management
+  const {
+    queue,
+    addToQueue,
+    removeFromQueue,
+    pauseDownload,
+    resumeDownload,
+    cancelDownload,
+    clearQueue,
+    pauseAll,
+    resumeAll,
+    activeDownloads,
+    totalProgress
+  } = useDownloadQueue()
+
   const analyzeVideo = useCallback(async (videoUrl: string) => {
     if (!videoUrl.trim()) {
       setError(">>> ERROR: No URL provided. System requires input.")
@@ -180,6 +197,20 @@ export default function YoutubeDownloaderPage() {
     setTimeout(() => {
       setDownloadingQuality(null)
     }, 3000)
+  }
+
+  const handleAddToQueue = (resolution: { quality: string; size: string }) => {
+    if (!videoData) return
+    
+    addToQueue({
+      videoId: videoData.id,
+      title: videoData.title,
+      thumbnail: videoData.thumbnail,
+      quality: resolution.quality,
+      size: resolution.size
+    })
+    
+    setError(null)
   }
 
   return (
@@ -279,6 +310,15 @@ export default function YoutubeDownloaderPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="text-blue-400 hover:bg-blue-400/10 hover:text-blue-300 rounded-none font-inter border border-blue-500/30"
+                          onClick={() => handleAddToQueue(res)}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          ADD TO QUEUE
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-green-400 hover:bg-green-400/10 hover:text-green-300 rounded-none font-inter"
                           onClick={() => {
                             handleDownload(res.quality)
@@ -317,6 +357,19 @@ export default function YoutubeDownloaderPage() {
               </CardContent>
             </Card>
           )}
+          
+          {/* Download Queue */}
+          <DownloadQueue
+            queue={queue}
+            activeDownloads={activeDownloads}
+            totalProgress={totalProgress}
+            onPause={pauseDownload}
+            onResume={resumeDownload}
+            onCancel={cancelDownload}
+            onClear={clearQueue}
+            onPauseAll={pauseAll}
+            onResumeAll={resumeAll}
+          />
         </div>
       </main>
     </div>
