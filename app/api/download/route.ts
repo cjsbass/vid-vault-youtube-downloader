@@ -24,12 +24,19 @@ export async function GET(request: NextRequest) {
 
     const formatSelector = qualityMap[quality] || 'best'
 
-    // Get filename and file size first
+    // Get filename and file size first with robust options
     const infoProcess = spawn('yt-dlp', [
       '--print', 'filename',
       '--print', 'filesize',
       '--format', formatSelector,
       '--output', '%(title)s.%(ext)s',
+      '--no-check-certificate',
+      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      '--extractor-retries', '3',
+      '--fragment-retries', '3',
+      '--retry-sleep', '1',
+      '--no-warnings',
+      '--ignore-errors',
       youtubeUrl
     ])
 
@@ -62,10 +69,19 @@ export async function GET(request: NextRequest) {
     
     const sanitizedFilename = filename.replace(/[^\w\s.-]/g, '_').trim()
 
-    // Stream the video directly to the user with proper download headers
+    // Stream the video directly to the user with proper download headers and robust options
     const downloadProcess = spawn('yt-dlp', [
       '--format', formatSelector,
       '--output', '-', // Output to stdout
+      '--no-check-certificate',
+      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      '--extractor-retries', '3',
+      '--fragment-retries', '3',
+      '--retry-sleep', '1',
+      '--no-warnings',
+      '--ignore-errors',
+      '--http-chunk-size', '1M',
+      '--buffer-size', '16K',
       youtubeUrl
     ])
 

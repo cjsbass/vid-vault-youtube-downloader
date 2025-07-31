@@ -15,10 +15,16 @@ export async function GET(request: NextRequest) {
     
     console.log(`[Railway Debug] Getting file sizes for video: ${videoId}`)
     
-    // Get JSON metadata with format information
+    // Get JSON metadata with format information using robust server options
     const ytDlpProcess = spawn('yt-dlp', [
       '--dump-json',
       '--no-download',
+      '--no-check-certificate',
+      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      '--extractor-retries', '3',
+      '--retry-sleep', '1',
+      '--no-warnings',
+      '--ignore-errors',
       youtubeUrl
     ])
 

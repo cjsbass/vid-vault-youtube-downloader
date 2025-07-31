@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       console.warn('[Queue] Could not create downloads directory:', e)
     }
 
-    // Start yt-dlp process with better options
+    // Start yt-dlp process with robust server-friendly options
     const ytDlpProcess = spawn('yt-dlp', [
       '--newline',
       '--progress',
@@ -70,10 +70,16 @@ export async function POST(request: NextRequest) {
       '--extract-flat', 'false',
       '--retries', '3',
       '--fragment-retries', '3',
+      '--retry-sleep', '1',
+      '--no-check-certificate',
+      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      '--extractor-retries', '3',
+      '--ignore-errors',
       '--output', `/tmp/downloads/%(title)s_${quality}.%(ext)s`,
       '--format', `best[height<=${quality.replace('p', '')}]/best`,
       '--no-warnings',
       '--http-chunk-size', '1M',
+      '--buffer-size', '16K',
       youtubeUrl
     ], {
       stdio: ['ignore', 'pipe', 'pipe']
