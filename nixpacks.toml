@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_18", "python3", "ffmpeg", "yt-dlp"]
 
 [phases.install]
-cmds = ["npm install --legacy-peer-deps"]
+cmds = ["npm ci"]
 
 [phases.build]
 cmds = ["npm run build"]

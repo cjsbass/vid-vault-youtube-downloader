@@ -104,14 +104,16 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Prepare headers
+    // Prepare headers with resume capability
     const headers: Record<string, string> = {
       'Content-Type': 'video/mp4',
       'Content-Disposition': `attachment; filename="${sanitizedFilename}"`,
       'Cache-Control': 'no-cache',
+      'Accept-Ranges': 'bytes', // Enable resume functionality
+      'X-Accel-Buffering': 'no', // Better streaming for download managers
     }
 
-    // Add Content-Length if we have a valid file size (enables progress bar)
+    // Add Content-Length if we have a valid file size (enables progress bar and resume)
     if (filesize !== 'NA' && !isNaN(parseInt(filesize))) {
       headers['Content-Length'] = filesize
     } else {
