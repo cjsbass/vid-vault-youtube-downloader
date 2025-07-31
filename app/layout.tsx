@@ -5,7 +5,7 @@ import './globals.css'
 
 // Force Railway deployment refresh
 export const metadata: Metadata = {
-  title: 'Vid Vault - Matrix YouTube Downloader',
+  title: 'CorgnelliTube - Matrix YouTube Downloader',
   description: 'Download YouTube videos with Matrix-style interface. High-quality downloads with resume capability.',
   keywords: ['youtube', 'downloader', 'matrix', 'video', 'download'],
   icons: {

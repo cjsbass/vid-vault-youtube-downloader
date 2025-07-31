@@ -1,10 +1,10 @@
-# 🎮 VID-VAULT - 80's Arcade YouTube Downloader
+# 🎮 CorgnelliTube - 80's Arcade YouTube Downloader
 
 > **Your Gateway to the Media Mainframe**
 
 A sleek, retro-cyberpunk YouTube downloader with authentic 80's arcade aesthetics, featuring Matrix rain effects and terminal-style UI.
 
-![VID-VAULT Demo](./public/80s-arcade-screenshot.png)
+![CorgnelliTube Demo](./public/80s-arcade-screenshot.png)
 
 ## ✨ Features
 
@@ -38,8 +38,8 @@ The app simulates YouTube URL processing and displays mock video data with downl
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/cjsbass/vid-vault-youtube-downloader.git
-   cd vid-vault-youtube-downloader
+   git clone https://github.com/cjsbass/corgnellitube-youtube-downloader.git
+cd corgnellitube-youtube-downloader
    ```
 
 2. **Install dependencies**
@@ -64,7 +64,7 @@ The app simulates YouTube URL processing and displays mock video data with downl
 
 ## 🎨 Design Philosophy
 
-VID-VAULT combines modern web development practices with nostalgic 80's arcade aesthetics:
+CorgnelliTube combines modern web development practices with nostalgic 80's arcade aesthetics:
 
 - **Cyberpunk Theme**: Dark backgrounds with neon green accents
 - **Terminal Interface**: Monospace fonts and command-line styling
@@ -75,7 +75,7 @@ VID-VAULT combines modern web development practices with nostalgic 80's arcade a
 ## 📁 Project Structure
 
 ```
-vid-vault-youtube-downloader/
+corgnellitube-youtube-downloader/
 ├── app/
 │   ├── globals.css          # Global styles and animations
 │   ├── layout.tsx           # Root layout component

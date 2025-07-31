@@ -191,9 +191,9 @@ export default function YoutubeDownloaderPage() {
           <div className="text-center mb-10">
             <h1
               className="font-inter text-5xl sm:text-6xl md:text-7xl text-green-400 tracking-widest glitch font-bold"
-              data-text="VID-VAULT"
+              data-text="CorgnelliTube"
             >
-              VID-VAULT
+              CorgnelliTube
             </h1>
             <p className="text-green-500 mt-2 text-lg font-inter">&gt;&gt;&gt; Your Gateway to the Media Mainframe</p>
           </div>
