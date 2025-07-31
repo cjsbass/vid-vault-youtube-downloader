@@ -26,7 +26,7 @@ export const MatrixRain: React.FC = () => {
       const nums = "0123456789"
       const alphabet = katakana + latin + nums
 
-      const fontSize = 16 // Back to original readable size
+      const fontSize = 16 // Back to original readable size - Railway sync
       const columns = Math.floor(canvas.width / fontSize)
 
       const rainDrops: number[] = []
