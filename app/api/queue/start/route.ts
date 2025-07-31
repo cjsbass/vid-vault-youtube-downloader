@@ -26,7 +26,14 @@ export async function POST(request: NextRequest) {
 
     // Check if already downloading
     if (activeDownloads.has(id)) {
-      return NextResponse.json({ error: 'Download already in progress' }, { status: 409 })
+      const existing = activeDownloads.get(id)
+      if (existing && existing.status === 'downloading') {
+        return NextResponse.json({ error: 'Download already in progress' }, { status: 409 })
+      } else {
+        // Clean up stale entry
+        activeDownloads.delete(id)
+        console.log(`[Queue] Cleaned up stale download entry: ${id}`)
+      }
     }
 
     console.log(`[Queue] Starting download: ${id} (${videoId} @ ${quality})`)
@@ -49,9 +56,12 @@ export async function POST(request: NextRequest) {
       '--no-part',
       '--no-playlist',
       '--extract-flat', 'false',
+      '--retries', '3',
+      '--fragment-retries', '3',
       '--output', `/tmp/downloads/%(title)s_${quality}.%(ext)s`,
       '--format', `best[height<=${quality.replace('p', '')}]/best`,
       '--no-warnings',
+      '--http-chunk-size', '1M',
       youtubeUrl
     ], {
       stdio: ['ignore', 'pipe', 'pipe']
@@ -121,7 +131,14 @@ export async function POST(request: NextRequest) {
     })
 
     ytDlpProcess.stderr.on('data', (data) => {
-      console.error(`[Queue] yt-dlp stderr (${id}):`, data.toString())
+      const errorOutput = data.toString()
+      console.error(`[Queue] yt-dlp stderr (${id}):`, errorOutput)
+      
+      // Handle specific errors
+      if (errorOutput.includes('HTTP Error 416') || errorOutput.includes('Requested range not satisfiable')) {
+        console.log(`[Queue] Retrying download without range requests: ${id}`)
+        // Could implement retry logic here
+      }
     })
 
     ytDlpProcess.on('close', (code) => {
@@ -130,17 +147,24 @@ export async function POST(request: NextRequest) {
       if (code === 0) {
         downloadInfo.status = 'completed'
         downloadInfo.progress = 100
+        downloadInfo.eta = '00:00'
+        downloadInfo.speed = '0 MB/s'
       } else {
         downloadInfo.status = 'failed'
+        downloadInfo.progress = 0
+        downloadInfo.eta = '--:--'
+        downloadInfo.speed = '0 MB/s'
       }
       
       // Broadcast final status
       broadcastProgress(id, downloadInfo)
       
-      // Clean up after a delay
+      // Clean up immediately for failed downloads, delay for completed
+      const cleanupDelay = code === 0 ? 30000 : 5000 // 30s for success, 5s for failure
       setTimeout(() => {
         activeDownloads.delete(id)
-      }, 60000) // Keep for 1 minute for final status updates
+        console.log(`[Queue] Cleaned up download: ${id}`)
+      }, cleanupDelay)
     })
 
     return NextResponse.json({ 

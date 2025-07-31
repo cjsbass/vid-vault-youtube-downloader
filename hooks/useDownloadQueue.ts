@@ -81,11 +81,17 @@ export const useDownloadQueue = (): UseDownloadQueueReturn => {
     setQueue(prev => prev.filter(item => item.id !== id))
     // Call cancel API
     fetch(`/api/queue/cancel/${id}`, { method: 'POST' })
+      .catch(error => console.warn('[Queue] Error cancelling download:', error))
   }, [])
 
-  // Clear completed downloads
+  // Clear completed and failed downloads
   const clearQueue = useCallback(() => {
-    setQueue(prev => prev.filter(item => item.status === 'downloading' || item.status === 'pending'))
+    setQueue(prev => prev.filter(item => 
+      item.status === 'downloading' || item.status === 'pending'
+    ))
+    // Also cleanup server state
+    fetch('/api/queue/cleanup', { method: 'POST' })
+      .catch(error => console.warn('[Queue] Error cleaning up server state:', error))
   }, [])
 
   // Pause all downloads
@@ -122,6 +128,34 @@ export const useDownloadQueue = (): UseDownloadQueueReturn => {
           videoId: nextPending.videoId,
           quality: nextPending.quality
         })
+      })
+      .then(response => {
+        if (response.status === 409) {
+          console.warn(`[Queue] Download conflict for ${nextPending.id}, cleaning up and retrying`)
+          // Clean up server state and retry
+          fetch('/api/queue/cleanup', { method: 'POST' })
+            .then(() => {
+              // Retry after cleanup
+              setTimeout(() => startNextDownload(), 1000)
+            })
+        } else if (!response.ok) {
+          console.error(`[Queue] Failed to start download: ${response.status}`)
+          // Mark as failed
+          setQueue(prev => prev.map(item => 
+            item.id === nextPending.id 
+              ? { ...item, status: 'failed' as const } 
+              : item
+          ))
+        }
+      })
+      .catch(error => {
+        console.error('[Queue] Error starting download:', error)
+        // Mark as failed
+        setQueue(prev => prev.map(item => 
+          item.id === nextPending.id 
+            ? { ...item, status: 'failed' as const } 
+            : item
+        ))
       })
       
       return prev.map(item => 
