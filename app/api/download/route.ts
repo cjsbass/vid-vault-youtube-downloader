@@ -53,11 +53,15 @@ export async function GET(request: NextRequest) {
         case '360':
           return [
             'best[height<=360][ext=mp4]',
-            'best[height<=360]',
+            'best[height<=360]', 
             'bestvideo[height<=360]+bestaudio/best[height<=360]',
-            // For 360p, try worst as alternative (but not best!)
             'worst[ext=mp4]',
-            'worst'
+            'worst',
+            // Last resort: allow up to 480p but never above that
+            'best[height<=480][ext=mp4]',
+            'best[height<=480]',
+            // Emergency fallback for Railway (with warning)
+            'worst[height>=240]'
           ]
         default:
           return ['best']
@@ -114,6 +118,11 @@ export async function GET(request: NextRequest) {
         successfulFormat = formatSelector
         console.log(`[Download] ✅ Successfully found format for ${quality}p: ${formatSelector}`)
         console.log(`[Download] Expected size: ~${quality === '1080' ? '100MB' : quality === '720' ? '60MB' : quality === '480' ? '35MB' : '20MB'}, Actual filesize: ${filesize !== 'NA' ? formatBytes(parseInt(filesize)) : 'Unknown'}`)
+        
+        // Warn if using emergency fallback
+        if (formatSelector.includes('worst[height>=240]')) {
+          console.warn(`[Download] ⚠️ WARNING: Using emergency fallback format for ${quality}p. Quality may not match exactly.`)
+        }
         break
         
       } catch (error) {
@@ -124,7 +133,11 @@ export async function GET(request: NextRequest) {
     }
     
     if (!infoOutput) {
-      throw new Error(`All format selectors failed for quality ${quality}`)
+      console.log(`[Download] ❌ All ${formatSelectors.length} format selectors failed for ${quality}p:`)
+      formatSelectors.forEach((format, index) => {
+        console.log(`[Download]   ${index + 1}. ${format}`)
+      })
+      throw new Error(`All format selectors failed for quality ${quality}p. Tried ${formatSelectors.length} different formats.`)
     }
 
 
