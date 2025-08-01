@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 
+// Helper function to format bytes
+const formatBytes = (bytes: number): string => {
+  if (!bytes || bytes === 0) return "0 B"
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const videoId = searchParams.get('videoId')
@@ -14,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Construct the YouTube URL
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
     
-    // More flexible quality mapping with fallbacks
+    // Strict quality mapping - only download requested quality or very close alternatives
     const getFormatSelector = (quality: string): string[] => {
       switch(quality) {
         case '1080':
@@ -22,32 +31,33 @@ export async function GET(request: NextRequest) {
             'best[height<=1080][ext=mp4]',
             'best[height<=1080]',
             'bestvideo[height<=1080]+bestaudio/best[height<=1080]',
-            'best[height<=720]',
-            'best'
+            // Only fallback to 720p as last resort for 1080p
+            'best[height<=720][ext=mp4]'
           ]
         case '720':
           return [
             'best[height<=720][ext=mp4]', 
             'best[height<=720]',
             'bestvideo[height<=720]+bestaudio/best[height<=720]',
-            'best[height<=480]',
-            'best'
+            // Only fallback to 480p as last resort for 720p
+            'best[height<=480][ext=mp4]'
           ]
         case '480':
           return [
             'best[height<=480][ext=mp4]',
             'best[height<=480]', 
             'bestvideo[height<=480]+bestaudio/best[height<=480]',
-            'best[height<=360]',
-            'best'
+            // Only fallback to 360p as last resort for 480p
+            'best[height<=360][ext=mp4]'
           ]
         case '360':
           return [
             'best[height<=360][ext=mp4]',
             'best[height<=360]',
             'bestvideo[height<=360]+bestaudio/best[height<=360]',
-            'worst',
-            'best'
+            // For 360p, try worst as alternative (but not best!)
+            'worst[ext=mp4]',
+            'worst'
           ]
         default:
           return ['best']
@@ -102,11 +112,12 @@ export async function GET(request: NextRequest) {
         
         // If we get here, this format worked
         successfulFormat = formatSelector
-        console.log(`[Download] Successfully found format: ${formatSelector}`)
+        console.log(`[Download] ✅ Successfully found format for ${quality}p: ${formatSelector}`)
+        console.log(`[Download] Expected size: ~${quality === '1080' ? '100MB' : quality === '720' ? '60MB' : quality === '480' ? '35MB' : '20MB'}, Actual filesize: ${filesize !== 'NA' ? formatBytes(parseInt(filesize)) : 'Unknown'}`)
         break
         
       } catch (error) {
-        console.log(`[Download] Format ${formatSelector} failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        console.log(`[Download] ❌ Format ${formatSelector} failed for ${quality}p: ${error instanceof Error ? error.message : 'Unknown error'}`)
         // Continue to next format
         continue
       }
@@ -127,7 +138,8 @@ export async function GET(request: NextRequest) {
     const sanitizedFilename = filename.replace(/[^\w\s.-]/g, '_').trim()
 
     // Stream the video directly to the user using the successful format
-    console.log(`[Download] Starting download with format: ${successfulFormat}`)
+    console.log(`[Download] 🚀 Starting ${quality}p download with format: ${successfulFormat}`)
+    console.log(`[Download] Expected behavior: Should download ~${quality === '1080' ? '100MB' : quality === '720' ? '60MB' : quality === '480' ? '35MB' : '20MB'} file`)
     const downloadProcess = spawn('yt-dlp', [
       '--format', successfulFormat,
       '--output', '-', // Output to stdout
