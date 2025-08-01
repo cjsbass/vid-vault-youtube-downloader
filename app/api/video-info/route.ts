@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       const simpleSize = parseInt(simpleOutput.trim())
       if (simpleSize && simpleSize > 0) {
         console.log(`[Railway Debug] Ultra-simple worked! Size: ${formatBytes(simpleSize)}`)
-        // If simple works, return a basic result
+        // If simple works, return calculated sizes based on actual data
         return NextResponse.json({ 
           sizes: {
             "1080": formatBytes(simpleSize),
@@ -168,15 +168,9 @@ export async function GET(request: NextRequest) {
     console.log(`[Railway Debug] Direct method results:`, sizes)
     console.log(`[Railway Debug] Direct method success count: ${Object.keys(sizes).length}/4`)
     
-    // If direct method got some results, use them
+    // If direct method got some results, use them (NO FALLBACKS)
     if (Object.keys(sizes).length > 0) {
-      // Fill in fallbacks for missing qualities
-      if (!sizes["1080"]) sizes["1080"] = "~150-250 MB"
-      if (!sizes["720"]) sizes["720"] = "~80-120 MB"
-      if (!sizes["480"]) sizes["480"] = "~40-60 MB" 
-      if (!sizes["360"]) sizes["360"] = "~20-30 MB"
-      
-      console.log(`[Railway Debug] Final direct method sizes:`, sizes)
+      console.log(`[Railway Debug] Direct method success - returning exact sizes only:`, sizes)
       return NextResponse.json({ sizes })
     }
     
@@ -210,16 +204,9 @@ export async function GET(request: NextRequest) {
       
       console.log(`[Railway Debug] List formats output length: ${listOutput.length}`)
       if (listOutput.length > 100) {
-        console.log(`[Railway Debug] List formats sample:`, listOutput.substring(0, 500))
-        // If we got format list, return some estimated sizes
-        return NextResponse.json({ 
-          sizes: {
-            "1080": "~200 MB (estimated)",
-            "720": "~120 MB (estimated)",
-            "480": "~70 MB (estimated)", 
-            "360": "~35 MB (estimated)"
-          }
-        })
+        console.log(`[Railway Debug] List formats worked but no exact sizes - returning empty`)
+        // Don't return estimated sizes - return empty so only exact sizes show
+        return NextResponse.json({ sizes: {} })
       }
     } catch (listError) {
       console.log(`[Railway Debug] List formats failed:`, listError instanceof Error ? listError.message : 'Unknown error')
@@ -364,28 +351,16 @@ export async function GET(request: NextRequest) {
     console.log(`[Railway Debug] JSON extracted sizes:`, jsonSizes)
     console.log(`[Railway Debug] Found ${Object.keys(bestFormats).length} exact quality matches out of ${formats.length} total formats`)
 
-    // Use JSON results if we got any, otherwise use fallbacks
-    const finalSizes: { [key: string]: string } = {}
-    finalSizes["1080"] = jsonSizes["1080"] || "~150-250 MB"
-    finalSizes["720"] = jsonSizes["720"] || "~80-120 MB"
-    finalSizes["480"] = jsonSizes["480"] || "~40-60 MB" 
-    finalSizes["360"] = jsonSizes["360"] || "~20-30 MB"
+    // Use JSON results if we got any, NO FALLBACKS
+    console.log(`[Railway Debug] JSON method extracted sizes:`, jsonSizes)
 
-    console.log(`[Railway Debug] JSON method final sizes:`, finalSizes)
-
-    return NextResponse.json({ sizes: finalSizes })
+    return NextResponse.json({ sizes: jsonSizes })
 
   } catch (error) {
     console.error('Video info error:', error)
     
-    // Return fallback sizes if yt-dlp fails
-    return NextResponse.json({ 
-      sizes: {
-        "1080": "~150-250 MB",
-        "720": "~80-120 MB", 
-        "480": "~40-60 MB",
-        "360": "~20-30 MB"
-      }
-    })
+    // Return empty sizes if all methods fail - NO ESTIMATES
+    console.log(`[Railway Debug] All methods failed - returning empty sizes`)
+    return NextResponse.json({ sizes: {} })
   }
 }
