@@ -14,52 +14,109 @@ export async function GET(request: NextRequest) {
     // Construct the YouTube URL
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
     
-    // Quality mapping for yt-dlp format selection
-    const qualityMap: { [key: string]: string } = {
-      '1080': 'best[height<=1080]',
-      '720': 'best[height<=720]',
-      '480': 'best[height<=480]',
-      '360': 'best[height<=360]'
+    // More flexible quality mapping with fallbacks
+    const getFormatSelector = (quality: string): string[] => {
+      switch(quality) {
+        case '1080':
+          return [
+            'best[height<=1080][ext=mp4]',
+            'best[height<=1080]',
+            'bestvideo[height<=1080]+bestaudio/best[height<=1080]',
+            'best[height<=720]',
+            'best'
+          ]
+        case '720':
+          return [
+            'best[height<=720][ext=mp4]', 
+            'best[height<=720]',
+            'bestvideo[height<=720]+bestaudio/best[height<=720]',
+            'best[height<=480]',
+            'best'
+          ]
+        case '480':
+          return [
+            'best[height<=480][ext=mp4]',
+            'best[height<=480]', 
+            'bestvideo[height<=480]+bestaudio/best[height<=480]',
+            'best[height<=360]',
+            'best'
+          ]
+        case '360':
+          return [
+            'best[height<=360][ext=mp4]',
+            'best[height<=360]',
+            'bestvideo[height<=360]+bestaudio/best[height<=360]',
+            'worst',
+            'best'
+          ]
+        default:
+          return ['best']
+      }
     }
 
-    const formatSelector = qualityMap[quality] || 'best'
+    const formatSelectors = getFormatSelector(quality)
 
-    // Get filename and file size first with robust options
-    const infoProcess = spawn('yt-dlp', [
-      '--print', 'filename',
-      '--print', 'filesize',
-      '--format', formatSelector,
-      '--output', '%(title)s.%(ext)s',
-      '--no-check-certificate',
-      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      '--extractor-retries', '3',
-      '--fragment-retries', '3',
-      '--retry-sleep', '1',
-      '--no-warnings',
-      '--ignore-errors',
-      youtubeUrl
-    ])
-
+    // Try format selectors in order until one works
+    let successfulFormat = 'best'
     let infoOutput = ''
     let infoError = ''
+    
+    for (const formatSelector of formatSelectors) {
+      console.log(`[Download] Trying format: ${formatSelector}`)
+      
+      const infoProcess = spawn('yt-dlp', [
+        '--print', 'filename',
+        '--print', 'filesize', 
+        '--format', formatSelector,
+        '--output', '%(title)s.%(ext)s',
+        '--no-check-certificate',
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        '--extractor-retries', '2',
+        '--fragment-retries', '2',
+        '--retry-sleep', '1',
+        '--no-warnings',
+        youtubeUrl
+      ])
 
-    infoProcess.stdout.on('data', (data) => {
-      infoOutput += data.toString()
-    })
+      infoOutput = ''
+      infoError = ''
 
-    infoProcess.stderr.on('data', (data) => {
-      infoError += data.toString()
-    })
-
-    await new Promise<void>((resolve, reject) => {
-      infoProcess.on('close', (code) => {
-        if (code !== 0) {
-          reject(new Error(`yt-dlp info failed: ${infoError}`))
-        } else {
-          resolve()
-        }
+      infoProcess.stdout.on('data', (data) => {
+        infoOutput += data.toString()
       })
-    })
+
+      infoProcess.stderr.on('data', (data) => {
+        infoError += data.toString()
+      })
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          infoProcess.on('close', (code) => {
+            if (code !== 0) {
+              reject(new Error(`yt-dlp info failed: ${infoError}`))
+            } else {
+              resolve()
+            }
+          })
+        })
+        
+        // If we get here, this format worked
+        successfulFormat = formatSelector
+        console.log(`[Download] Successfully found format: ${formatSelector}`)
+        break
+        
+      } catch (error) {
+        console.log(`[Download] Format ${formatSelector} failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        // Continue to next format
+        continue
+      }
+    }
+    
+    if (!infoOutput) {
+      throw new Error(`All format selectors failed for quality ${quality}`)
+    }
+
+
 
     const infoLines = infoOutput.trim().split('\n')
     const filename = infoLines[0]
@@ -69,17 +126,17 @@ export async function GET(request: NextRequest) {
     
     const sanitizedFilename = filename.replace(/[^\w\s.-]/g, '_').trim()
 
-    // Stream the video directly to the user with proper download headers and robust options
+    // Stream the video directly to the user using the successful format
+    console.log(`[Download] Starting download with format: ${successfulFormat}`)
     const downloadProcess = spawn('yt-dlp', [
-      '--format', formatSelector,
+      '--format', successfulFormat,
       '--output', '-', // Output to stdout
       '--no-check-certificate',
       '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      '--extractor-retries', '3',
-      '--fragment-retries', '3',
+      '--extractor-retries', '2',
+      '--fragment-retries', '2',
       '--retry-sleep', '1',
       '--no-warnings',
-      '--ignore-errors',
       '--http-chunk-size', '1M',
       '--buffer-size', '16K',
       youtubeUrl

@@ -16,39 +16,77 @@ export async function GET(request: NextRequest) {
     console.log(`[Railway Debug] Getting file sizes for video: ${videoId}`)
     
     // Get JSON metadata with format information using robust server options
-    const ytDlpProcess = spawn('yt-dlp', [
-      '--dump-json',
-      '--no-download',
-      '--no-check-certificate',
-      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      '--extractor-retries', '3',
-      '--retry-sleep', '1',
-      '--no-warnings',
-      '--ignore-errors',
-      youtubeUrl
-    ])
-
+    // Try different extraction strategies for better compatibility
+    const ytDlpStrategies = [
+      [
+        '--dump-json',
+        '--no-download',
+        '--no-check-certificate',
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        '--extractor-retries', '2',
+        '--retry-sleep', '1',
+        '--no-warnings',
+        youtubeUrl
+      ],
+      [
+        '--dump-json', 
+        '--no-download',
+        '--format', 'best',
+        '--no-check-certificate',
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        '--extractor-retries', '1',
+        '--no-warnings',
+        '--ignore-errors',
+        youtubeUrl
+      ]
+    ]
+    
     let output = ''
     let error = ''
+    let success = false
+    
+    for (const [index, strategy] of ytDlpStrategies.entries()) {
+      console.log(`[Railway Debug] Trying strategy ${index + 1}/${ytDlpStrategies.length}`)
+      
+      const ytDlpProcess = spawn('yt-dlp', strategy)
+      
+      output = ''
+      error = ''
 
-    ytDlpProcess.stdout.on('data', (data) => {
-      output += data.toString()
-    })
-
-    ytDlpProcess.stderr.on('data', (data) => {
-      error += data.toString()
-    })
-
-    await new Promise<void>((resolve, reject) => {
-      ytDlpProcess.on('close', (code) => {
-        if (code !== 0) {
-          console.error(`[Railway Debug] yt-dlp failed with code ${code}:`, error)
-          reject(new Error(`yt-dlp failed: ${error}`))
-        } else {
-          resolve()
-        }
+      ytDlpProcess.stdout.on('data', (data) => {
+        output += data.toString()
       })
-    })
+
+      ytDlpProcess.stderr.on('data', (data) => {
+        error += data.toString()
+      })
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          ytDlpProcess.on('close', (code) => {
+            if (code !== 0) {
+              reject(new Error(`yt-dlp failed with code ${code}: ${error}`))
+            } else {
+              resolve()
+            }
+          })
+        })
+        
+        success = true
+        console.log(`[Railway Debug] Strategy ${index + 1} succeeded`)
+        break
+        
+      } catch (strategyError) {
+        console.log(`[Railway Debug] Strategy ${index + 1} failed:`, strategyError instanceof Error ? strategyError.message : 'Unknown error')
+        continue
+      }
+    }
+    
+    if (!success) {
+      throw new Error(`All extraction strategies failed. Last error: ${error}`)
+    }
+
+
 
     console.log(`[Railway Debug] yt-dlp output length: ${output.length}`)
     
