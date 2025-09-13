@@ -182,7 +182,7 @@ export default function YoutubeDownloaderPage() {
     try {
       const videoData = await fetchYouTubeVideoData(videoId)
       if (videoData.error) {
-        setError(`>>> ERROR: ${videoData.error}`)
+        setError(`>>> ERROR: ${videoData.error}. This deployment runs on Railway's servers which YouTube blocks. Please clone the repository and run locally for full functionality.`)
         setVideoData(null)
       } else {
         setVideoData(videoData)
@@ -245,6 +245,18 @@ export default function YoutubeDownloaderPage() {
   return (
     <div className={cn("min-h-screen w-full bg-black text-white overflow-hidden", inter.variable)}>
       <MatrixRain />
+      
+      {/* Production limitation notice */}
+      {typeof window !== 'undefined' && window.location.hostname.includes('railway.app') && (
+        <div className="relative z-20 bg-red-900/80 border-b border-red-500 p-3 text-center">
+          <p className="text-yellow-300 font-inter text-sm">
+            ⚠️ <strong>Limited Functionality:</strong> YouTube blocks cloud servers. For full functionality, 
+            <a href="https://github.com/cjsbass/vid-vault-youtube-downloader" className="underline ml-1 hover:text-yellow-100">
+              clone and run locally
+            </a>.
+          </p>
+        </div>
+      )}
 
       <main className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-2xl mx-auto">
