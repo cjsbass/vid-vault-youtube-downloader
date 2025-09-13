@@ -117,7 +117,6 @@ export async function GET(request: NextRequest) {
         // If we get here, this format worked
         successfulFormat = formatSelector
         console.log(`[Download] ✅ Successfully found format for ${quality}p: ${formatSelector}`)
-        console.log(`[Download] Expected size: ~${quality === '1080' ? '100MB' : quality === '720' ? '60MB' : quality === '480' ? '35MB' : '20MB'}, Actual filesize: ${filesize !== 'NA' ? formatBytes(parseInt(filesize)) : 'Unknown'}`)
         
         // Warn if using emergency fallback
         if (formatSelector.includes('worst[height>=240]')) {
@@ -146,7 +145,7 @@ export async function GET(request: NextRequest) {
     const filename = infoLines[0]
     const filesize = infoLines[1] || 'NA'
     
-    console.log(`Download info - Filename: ${filename}, Filesize: ${filesize}`)
+    console.log(`Download info - Filename: ${filename}, Filesize: ${filesize !== 'NA' ? formatBytes(parseInt(filesize)) : 'Unknown'}`)
     
     const sanitizedFilename = filename.replace(/[^\w\s.-]/g, '_').trim()
 
