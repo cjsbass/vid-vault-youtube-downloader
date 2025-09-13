@@ -32,6 +32,7 @@ interface VideoData {
     torrentUrl: string
     isExact?: boolean
   }[]
+  error?: string | null
 }
 
 // Utility functions
@@ -59,10 +60,19 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
   // Get real file sizes from our API
   const sizesResponse = await fetch(`/api/video-info?videoId=${videoId}`)
   let realSizes: { [key: string]: string } = {}
+  let apiError: string | null = null
   
   if (sizesResponse.ok) {
     const sizesData = await sizesResponse.json()
     realSizes = sizesData.sizes || {}
+    console.log('[Debug] API Response:', sizesData)
+    console.log('[Debug] Real sizes:', realSizes)
+  } else {
+    console.error('[Debug] API Error:', sizesResponse.status, sizesResponse.statusText)
+    if (sizesResponse.status === 403) {
+      const errorData = await sizesResponse.json()
+      apiError = errorData.message || 'YouTube is blocking requests from this server'
+    }
   }
 
     // Available download qualities with real sizes
@@ -73,7 +83,7 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
       url: `/api/download?videoId=${videoId}&quality=1080`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_1080p.mp4&tr=udp://tracker.openbittorrent.com:80`,
       available: !!realSizes["1080"], // Available if we have any size info
-      isExact: realSizes["1080"] && !realSizes["1080"].includes("~") // Track if size is exact
+      isExact: realSizes["1080"] ? !realSizes["1080"].includes("~") : false // Track if size is exact
     },
     { 
       quality: "720p", 
@@ -81,7 +91,7 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
       url: `/api/download?videoId=${videoId}&quality=720`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_720p.mp4&tr=udp://tracker.openbittorrent.com:80`,
       available: !!realSizes["720"], // Available if we have any size info
-      isExact: realSizes["720"] && !realSizes["720"].includes("~") // Track if size is exact
+      isExact: realSizes["720"] ? !realSizes["720"].includes("~") : false // Track if size is exact
     },
     { 
       quality: "480p", 
@@ -89,7 +99,7 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
       url: `/api/download?videoId=${videoId}&quality=480`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_480p.mp4&tr=udp://tracker.openbittorrent.com:80`,
       available: !!realSizes["480"], // Available if we have any size info
-      isExact: realSizes["480"] && !realSizes["480"].includes("~") // Track if size is exact
+      isExact: realSizes["480"] ? !realSizes["480"].includes("~") : false // Track if size is exact
     },
     { 
       quality: "360p", 
@@ -97,12 +107,14 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
       url: `/api/download?videoId=${videoId}&quality=360`,
       torrentUrl: `magnet:?xt=urn:btih:${videoId}&dn=${encodeURIComponent(oembedData.title)}_360p.mp4&tr=udp://tracker.openbittorrent.com:80`,
       available: !!realSizes["360"], // Available if we have any size info
-      isExact: realSizes["360"] && !realSizes["360"].includes("~") // Track if size is exact
+      isExact: realSizes["360"] ? !realSizes["360"].includes("~") : false // Track if size is exact
     },
   ]
   
   // Show qualities that have size information (exact or approximate)
+  console.log('[Debug] All qualities before filtering:', allQualities)
   const resolutions = allQualities.filter(quality => quality.available)
+  console.log('[Debug] Available resolutions after filtering:', resolutions)
 
   return {
     id: videoId,
@@ -115,7 +127,8 @@ async function fetchYouTubeVideoData(videoId: string): Promise<VideoData> {
       url: res.url,
       torrentUrl: res.torrentUrl,
       isExact: res.isExact
-    }))
+    })),
+    error: apiError
   }
 }
 
@@ -168,7 +181,12 @@ export default function YoutubeDownloaderPage() {
 
     try {
       const videoData = await fetchYouTubeVideoData(videoId)
-      setVideoData(videoData)
+      if (videoData.error) {
+        setError(`>>> ERROR: ${videoData.error}`)
+        setVideoData(null)
+      } else {
+        setVideoData(videoData)
+      }
     } catch (error) {
       console.error("Error fetching video data:", error)
       setError(">>> ERROR: Failed to fetch video information. Network or API error.")

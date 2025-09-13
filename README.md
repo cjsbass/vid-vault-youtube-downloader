@@ -1,10 +1,12 @@
-# 🎮 CorgnelliTube - 80's Arcade YouTube Downloader
+# 🎮 YouTube Downloader - 80's Arcade Style
 
 > **Your Gateway to the Media Mainframe**
 
-A sleek, retro-cyberpunk YouTube downloader with authentic 80's arcade aesthetics, featuring Matrix rain effects and terminal-style UI.
+A sleek, retro-cyberpunk YouTube downloader with authentic 80's arcade aesthetics, featuring Matrix rain effects and terminal-style UI. Download YouTube videos in multiple qualities with a nostalgic cyberpunk interface.
 
-![CorgnelliTube Demo](./public/80s-arcade-screenshot.png)
+![YouTube Downloader Demo](./public/80s-arcade-screenshot.png)
+
+🌐 **Live Demo**: [https://vid-vault-youtube-downloader-production.up.railway.app](https://vid-vault-youtube-downloader-production.up.railway.app)
 
 ## ✨ Features
 
@@ -15,14 +17,16 @@ A sleek, retro-cyberpunk YouTube downloader with authentic 80's arcade aesthetic
 ⚡ **Multiple Quality Options** - Download in 1080p, 720p, 480p, or 360p  
 🎨 **Modern Architecture** - Built with Next.js 15, TypeScript, and shadcn/ui components  
 
-## 🚀 Live Demo
+## 🚀 Getting Started
 
-The app simulates YouTube URL processing and displays mock video data with download options.
+This is a fully functional YouTube video downloader that allows you to download videos in multiple qualities.
 
-**Test it out:**
+**How to use:**
 1. Enter any YouTube URL (e.g., `https://www.youtube.com/watch?v=dQw4w9WgXcQ`)
-2. Click "EXECUTE" to initiate the download sequence
-3. Select your preferred quality and download
+2. Click "RE-SCAN" to analyze the video
+3. View video details including title, duration, and available qualities
+4. Select your preferred quality (1080p, 720p, 480p, or 360p)
+5. Click "DOWNLOAD" to save the video to your device
 
 ## 🛠️ Tech Stack
 
@@ -38,8 +42,8 @@ The app simulates YouTube URL processing and displays mock video data with downl
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/cjsbass/corgnellitube-youtube-downloader.git
-cd corgnellitube-youtube-downloader
+   git clone https://github.com/cjsbass/vid-vault-youtube-downloader.git
+   cd vid-vault-youtube-downloader
    ```
 
 2. **Install dependencies**
@@ -54,6 +58,18 @@ cd corgnellitube-youtube-downloader
 
 4. **Open your browser**
    Navigate to `http://localhost:3000`
+
+## 🚨 Important Note on Deployment
+
+When deploying to cloud services like Railway, Heroku, or similar platforms, YouTube may block requests with "Sign in to confirm you're not a bot" errors. This is because YouTube detects requests from data center IPs as potential bots.
+
+**Solutions:**
+1. **Run locally** - The app works perfectly when run on your local machine
+2. **Use a residential proxy** - Configure yt-dlp to use residential proxies
+3. **Self-host on a VPS with residential IP** - Use services that provide residential IPs
+4. **Add cookies** - Export cookies from your browser and configure yt-dlp to use them
+
+For production deployments, consider implementing a queue system where users submit URLs and downloads are processed from a residential IP.
 
 ## 🎯 Usage
 
@@ -126,6 +142,12 @@ npm run lint
 - Glass morphism card designs
 - Smooth hover animations
 - Loading states and transitions
+
+### Backend Features
+- **yt-dlp Integration** - Uses the powerful yt-dlp library for video extraction
+- **Multiple Quality Support** - Automatically detects and offers available video qualities
+- **Stream Downloads** - Efficient streaming downloads without storing files on server
+- **Error Handling** - Comprehensive error handling and user feedback
 
 ## 🤝 Contributing
 

@@ -359,6 +359,16 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Video info error:', error)
     
+    // Check if it's a bot detection error
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    if (errorMessage.includes('Sign in to confirm') || errorMessage.includes('bot')) {
+      return NextResponse.json({ 
+        error: 'YouTube Bot Protection Detected',
+        message: 'YouTube is blocking requests from this server. Please run the app locally for full functionality.',
+        sizes: {} 
+      }, { status: 403 })
+    }
+    
     // Return empty sizes if all methods fail - NO ESTIMATES
     console.log(`[Railway Debug] All methods failed - returning empty sizes`)
     return NextResponse.json({ sizes: {} })
